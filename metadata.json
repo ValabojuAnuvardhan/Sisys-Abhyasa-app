@@ -1,0 +1,6 @@
+{
+  "name": "Śiṣya Abhyāsa",
+  "description": "An AI-guided engineering practice, project execution, collaboration, evidence ledger, and career-readiness platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
