@@ -146,7 +146,7 @@ fun EvidenceProofScreen(
                     Text(text = state.userProfile.bio, style = MaterialTheme.typography.bodyMedium, color = PrimaryText)
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = PrimaryDarkTeal.copy(alpha = 0.2f))
+                    HorizontalDivider(color = PrimaryDarkTeal.copy(alpha = 0.2f))
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(

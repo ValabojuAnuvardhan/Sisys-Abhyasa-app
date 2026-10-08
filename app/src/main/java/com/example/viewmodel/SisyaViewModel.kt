@@ -1,7 +1,9 @@
 package com.example.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.FirestoreRepository
 import com.example.data.MockDataSource
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +34,6 @@ data class SisyaUiState(
     val courses: List<CourseModel> = MockDataSource.sampleCourses,
     val practiceProblems: List<PracticeProblem> = MockDataSource.samplePracticeProblems,
     val ideaRecommendations: List<IdeaRecommendation> = MockDataSource.sampleIdeaRecommendations,
-    val chatMessages: List<ChatMessage> = MockDataSource.initialChatMessages,
     val activeVivaTurns: List<MicroVivaTurn> = MockDataSource.sampleDefenseQuestions,
     val currentVivaIndex: Int = 0,
     val isVivaCompleted: Boolean = false,
@@ -49,13 +50,32 @@ data class SisyaUiState(
     ),
     val aiArchitectInputIdea: String = "",
     val isGeneratingArchitectPlan: Boolean = false,
-    val isPublicProofPreviewOpen: Boolean = false
+    val isPublicProofPreviewOpen: Boolean = false,
+    val isAuthenticated: Boolean = true
 )
 
-class SisyaViewModel : ViewModel() {
+class SisyaViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val firestoreRepository = FirestoreRepository(application.applicationContext)
 
     private val _uiState = MutableStateFlow(SisyaUiState())
     val uiState: StateFlow<SisyaUiState> = _uiState.asStateFlow()
+
+    init {
+        // Observe real-time tasks from Firestore
+        viewModelScope.launch {
+            firestoreRepository.observeTasks().collect { firestoreTasks ->
+                if (firestoreTasks.isNotEmpty()) {
+                    val updatedMilestones = _uiState.value.project.milestones.map { m ->
+                        if (m.id == "m_01") m.copy(tasks = firestoreTasks) else m
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        project = _uiState.value.project.copy(milestones = updatedMilestones)
+                    )
+                }
+            }
+        }
+    }
 
     fun navigateTo(screen: AppNavScreen) {
         _uiState.value = _uiState.value.copy(currentScreen = screen)
@@ -74,8 +94,7 @@ class SisyaViewModel : ViewModel() {
             if (item.id == itemId) item.copy(isCompleted = !item.isCompleted) else item
         }
         val updatedTask = currentTask.copy(learningChecklist = updatedChecklist)
-        
-        // Update both in selectedTask and in the project's milestones
+
         val updatedMilestones = _uiState.value.project.milestones.map { milestone ->
             val updatedTasks = milestone.tasks.map { if (it.id == updatedTask.id) updatedTask else it }
             milestone.copy(tasks = updatedTasks)
@@ -97,48 +116,13 @@ class SisyaViewModel : ViewModel() {
             selectedTask = updatedTask,
             project = _uiState.value.project.copy(milestones = updatedMilestones)
         )
-    }
 
-    fun sendChatMessage(userText: String, contextTag: String? = "Task #12") {
-        if (userText.isBlank()) return
-
-        val userMsg = ChatMessage(
-            id = "msg_${System.currentTimeMillis()}",
-            sender = "user",
-            content = userText.trim(),
-            timestamp = "Just now",
-            contextTag = contextTag
-        )
-
-        val currentList = _uiState.value.chatMessages + userMsg
-        _uiState.value = _uiState.value.copy(chatMessages = currentList)
-
-        // Socratic AI response generation
         viewModelScope.launch {
-            val responseText = generateSocraticResponse(userText)
-            val aiMsg = ChatMessage(
-                id = "ai_${System.currentTimeMillis()}",
-                sender = "sisya",
-                content = responseText,
-                timestamp = "Just now",
-                contextTag = contextTag,
-                trustBadge = "SOCRATIC GUIDANCE"
-            )
-            _uiState.value = _uiState.value.copy(chatMessages = _uiState.value.chatMessages + aiMsg)
-        }
-    }
-
-    private fun generateSocraticResponse(query: String): String {
-        val q = query.lowercase()
-        return when {
-            q.contains("token") || q.contains("jwt") || q.contains("auth") ->
-                "Good question on authentication. If we store the refresh token in memory or localStorage, what is our defense against XSS token exfiltration? What happens if you inspect how RFC 6749 defines HttpOnly and SameSite cookie policies?"
-            q.contains("test") || q.contains("mock") || q.contains("ci") ->
-                "When validating your acceptance criteria for token rejection, how do you verify both the clock skew leeway AND the blacklisted token revocation without relying on a slow live database in your CI runner?"
-            q.contains("db") || q.contains("postgres") || q.contains("sql") ->
-                "Think about database isolation levels. If two students submit applications for the same last remaining seat at the exact same millisecond, what PostgreSQL concurrency lock prevents double-assignment?"
-            else ->
-                "Let's trace this back to your acceptance criteria for Task #12. What is the fundamental invariant your service must guarantee before and after this operation?"
+            try {
+                firestoreRepository.updateTaskStatus(updatedTask, newStatus)
+            } catch (e: Exception) {
+                // Ignore transient errors
+            }
         }
     }
 
@@ -164,7 +148,6 @@ class SisyaViewModel : ViewModel() {
         val isDone = nextIndex >= turns.size
 
         if (isDone) {
-            // Upgrade evidence state for Authentication
             val newEvidence = SkillEvidenceItem(
                 id = "ev_${System.currentTimeMillis()}",
                 skillName = _uiState.value.selectedTask.requiredSkill,
@@ -176,10 +159,9 @@ class SisyaViewModel : ViewModel() {
                 prSha = "9c4b2a8f",
                 ciStatus = "Passed",
                 defenseTranscriptSnippet = "Q: Token revocation trade-off? A: $input",
-                verifiedDate = "Oct 06, 2026"
+                verifiedDate = "Oct 08, 2026"
             )
-            
-            // Advance task to DONE and elevate readiness score
+
             val updatedTask = _uiState.value.selectedTask.copy(
                 status = TaskStatus.DONE,
                 defenseStatus = "Completed"
@@ -203,6 +185,15 @@ class SisyaViewModel : ViewModel() {
                 project = _uiState.value.project.copy(milestones = updatedMilestones),
                 backendReadiness = updatedReadiness
             )
+
+            viewModelScope.launch {
+                try {
+                    firestoreRepository.saveEvidence(newEvidence)
+                    firestoreRepository.updateTaskStatus(updatedTask, TaskStatus.DONE)
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }
         } else {
             _uiState.value = _uiState.value.copy(
                 activeVivaTurns = turns,
@@ -227,6 +218,67 @@ class SisyaViewModel : ViewModel() {
             if (it.id == requestId) it.copy(status = "Accepted as Contributor") else it
         }
         _uiState.value = _uiState.value.copy(activeJoinRequests = updated)
+    }
+
+    fun declineJoinRequest(requestId: String) {
+        val updated = _uiState.value.activeJoinRequests.filter { it.id != requestId }
+        _uiState.value = _uiState.value.copy(activeJoinRequests = updated)
+    }
+
+    fun adoptProject(idea: IdeaRecommendation) {
+        val newMilestone = MilestoneModel(
+            id = "m_adopted_${System.currentTimeMillis()}",
+            number = 1,
+            title = "Core Architecture & Scaffolding",
+            objective = idea.problem,
+            status = "In Progress",
+            tasks = listOf(
+                TaskModel(
+                    id = "task_adopted_1",
+                    number = 1,
+                    milestoneId = "m_adopted",
+                    title = "Setup ${idea.title} Foundations",
+                    objective = idea.whyItFits,
+                    description = "Deconstruct ${idea.title} requirements into verifiable engineering units.",
+                    acceptanceCriteria = idea.engineeringChallenges,
+                    version = 1,
+                    status = TaskStatus.TODO,
+                    requiredSkill = idea.skillsGained.firstOrNull() ?: "Architecture",
+                    learningChecklist = listOf(
+                        LearningChecklistItem("lc_ad_1", "Study architecture boundaries", false, "System Design")
+                    ),
+                    branchName = "feat/scaffolding-core",
+                    assigneeName = _uiState.value.userProfile.name
+                )
+            )
+        )
+
+        val updatedProj = _uiState.value.project.copy(
+            title = idea.title,
+            description = idea.problem,
+            techStack = idea.technologies,
+            milestones = listOf(newMilestone) + _uiState.value.project.milestones
+        )
+
+        _uiState.value = _uiState.value.copy(
+            project = updatedProj,
+            currentScreen = AppNavScreen.PROJECTS
+        )
+    }
+
+    fun submitCollaborationPitch(projectTitle: String) {
+        val newReq = JoinRequest(
+            id = "jr_${System.currentTimeMillis()}",
+            studentName = _uiState.value.userProfile.name,
+            targetRole = _uiState.value.userProfile.targetRole,
+            pitch = "I'd like to contribute backend concurrency patterns and automated testing pipelines to $projectTitle.",
+            projectTitle = projectTitle,
+            requestedDate = "Just now",
+            status = "Pitch Submitted"
+        )
+        _uiState.value = _uiState.value.copy(
+            activeJoinRequests = _uiState.value.activeJoinRequests + newReq
+        )
     }
 
     fun togglePublicProofPreview(open: Boolean) {

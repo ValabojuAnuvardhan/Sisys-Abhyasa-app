@@ -103,7 +103,7 @@ fun SisyaButton(
                 containerColor = SurfaceWhite,
                 contentColor = PrimaryText
             ),
-            border = ButtonDefaults.outlinedButtonBorder.copy(
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                 width = 1.dp,
                 brush = androidx.compose.ui.graphics.SolidColor(BorderColor)
             )

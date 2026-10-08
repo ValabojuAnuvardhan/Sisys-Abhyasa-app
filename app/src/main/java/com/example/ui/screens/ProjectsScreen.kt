@@ -31,6 +31,7 @@ import com.example.viewmodel.SisyaUiState
 fun ProjectsScreen(
     state: SisyaUiState,
     onSelectTask: (TaskModel) -> Unit,
+    onAdoptProject: (IdeaRecommendation) -> Unit = {},
     onNavigate: (AppNavScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -272,7 +273,7 @@ fun ProjectsScreen(
                 }
 
                 items(state.ideaRecommendations) { idea ->
-                    IdeaRecommendationCardView(idea = idea)
+                    IdeaRecommendationCardView(idea = idea, onAdopt = { onAdoptProject(idea) })
                 }
             }
         }
@@ -342,7 +343,8 @@ fun MilestoneCardView(
 
 @Composable
 fun IdeaRecommendationCardView(
-    idea: IdeaRecommendation
+    idea: IdeaRecommendation,
+    onAdopt: () -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -398,7 +400,7 @@ fun IdeaRecommendationCardView(
             )
             SisyaButton(
                 text = "Adopt as Project",
-                onClick = { /* adopt project */ },
+                onClick = onAdopt,
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.AddCircle,
                 isPrimary = true

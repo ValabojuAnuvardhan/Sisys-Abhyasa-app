@@ -29,11 +29,13 @@ import com.example.ui.theme.PrimaryText
 import com.example.ui.theme.SisyaAbhyasaTheme
 import com.example.ui.theme.SurfaceWhite
 import com.example.viewmodel.AppNavScreen
+import com.example.viewmodel.ChatViewModel
 import com.example.viewmodel.SisyaViewModel
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: SisyaViewModel by viewModels()
+    private val chatViewModel: ChatViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -135,7 +137,7 @@ class MainActivity : ComponentActivity() {
                             AppNavScreen.CHAT -> {
                                 SisyaChatScreen(
                                     state = uiState,
-                                    onSendMessage = { viewModel.sendChatMessage(it) }
+                                    chatViewModel = chatViewModel
                                 )
                             }
                         }

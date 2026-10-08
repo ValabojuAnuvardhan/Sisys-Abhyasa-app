@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "users": {
+      "path": "users/{userId}",
+      "fields": {
+        "userId": { "type": "string", "description": "Authenticated user UID" },
+        "name": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "User email" },
+        "targetRole": { "type": "string", "description": "Target engineering career role" },
+        "readinessScore": { "type": "number", "description": "Job readiness score 0-100" },
+        "githubHandle": { "type": "string", "description": "Connected GitHub username" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "tasks": {
+      "path": "users/{userId}/tasks/{taskId}",
+      "fields": {
+        "taskId": { "type": "string" },
+        "userId": { "type": "string" },
+        "number": { "type": "number" },
+        "title": { "type": "string" },
+        "objective": { "type": "string" },
+        "status": { "type": "string" },
+        "requiredSkill": { "type": "string" },
+        "branchName": { "type": "string" },
+        "prNumber": { "type": "number" },
+        "ciStatus": { "type": "string" },
+        "defenseStatus": { "type": "string" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "evidence": {
+      "path": "users/{userId}/evidence/{evidenceId}",
+      "fields": {
+        "evidenceId": { "type": "string" },
+        "userId": { "type": "string" },
+        "skillName": { "type": "string" },
+        "state": { "type": "string" },
+        "taskNumber": { "type": "number" },
+        "taskTitle": { "type": "string" },
+        "prNumber": { "type": "number" },
+        "prSha": { "type": "string" },
+        "ciStatus": { "type": "string" },
+        "defenseTranscript": { "type": "string" },
+        "verifiedDate": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+    "chats": {
+      "path": "users/{userId}/chats/{messageId}",
+      "fields": {
+        "messageId": { "type": "string" },
+        "userId": { "type": "string" },
+        "sender": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "contextTag": { "type": "string" },
+        "trustBadge": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      }
+    }
+  }
+}

@@ -29,6 +29,8 @@ import com.example.viewmodel.SisyaUiState
 fun CollaborateScreen(
     state: SisyaUiState,
     onAcceptJoinRequest: (String) -> Unit,
+    onDeclineJoinRequest: (String) -> Unit = {},
+    onSubmitPitch: (String) -> Unit = {},
     onNavigate: (AppNavScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -184,7 +186,7 @@ fun CollaborateScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 SisyaButton(
                                     text = "Decline",
-                                    onClick = { /* decline */ },
+                                    onClick = { onDeclineJoinRequest(req.id) },
                                     modifier = Modifier.weight(1f),
                                     isPrimary = false
                                 )
@@ -229,7 +231,7 @@ fun CollaborateScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         SisyaButton(
                             text = "Submit Collaboration Pitch",
-                            onClick = { /* pitch flow */ },
+                            onClick = { onSubmitPitch(title) },
                             modifier = Modifier.fillMaxWidth(),
                             isPrimary = false
                         )

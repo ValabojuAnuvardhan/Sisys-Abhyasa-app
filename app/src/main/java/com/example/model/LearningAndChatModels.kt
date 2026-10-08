@@ -1,14 +1,5 @@
 package com.example.model
 
-data class ChatMessage(
-    val id: String,
-    val sender: String, // "user", "sisya", "mentor", "abhyasbot"
-    val content: String,
-    val timestamp: String,
-    val contextTag: String? = null, // e.g. "Task #12", "PR #18", "Evidence"
-    val trustBadge: String? = null // "FACT", "AI INTERPRETATION", "SOCRATIC GUIDANCE"
-)
-
 data class IdeaRecommendation(
     val id: String,
     val title: String,
