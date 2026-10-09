@@ -10,6 +10,7 @@ import com.example.model.ChatMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -49,6 +50,85 @@ data class ChatUiState(
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val firestoreRepository = FirestoreRepository(application.applicationContext)
+    private val database = com.example.data.local.AppDatabase.getDatabase(application.applicationContext)
+    val projectRepository = com.example.data.local.ProjectRepository(database.projectDao(), database.photoEvidenceDao())
+
+    val activeProjectEntity: StateFlow<com.example.data.local.ProjectEntity?> = projectRepository.activeProject
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    init {
+        // Pre-populate Room if empty
+        viewModelScope.launch {
+            val initial = com.example.data.local.ProjectEntity(
+                id = "proj_01",
+                title = "Autonomous Campus Placement Engine",
+                description = "A resilient microservices-based placement management platform handling 10,000+ simultaneous student applications, automated eligibility filters, and zero-trust audit verification.",
+                problemStatement = "Campus placement offices struggle with manual Excel sheets, missed eligibility criteria, fraud applications, and unverified student academic claims.",
+                architectureSummary = "Hexagonal architecture with Kotlin/Ktor service, PostgreSQL storage, Redis token blacklist, and GitHub Actions CI pipelines.",
+                techStackCsv = "Kotlin, PostgreSQL, JWT/Auth, Docker, Redis, REST APIs, CI/CD",
+                targetRole = "Backend Systems Engineer",
+                ownerId = "usr_anu_01",
+                ownerName = "Anuvardhan Valaboju",
+                repositoryName = "sisya-abhyasa/campus-placement-engine",
+                progressPercentage = 35,
+                activeMilestoneTitle = "Core Placement Architecture & Secure Identity",
+                activeTaskNumber = 12,
+                activeTaskTitle = "JWT Authentication & Refresh Token Rotation",
+                activeTaskStatus = "IN_PROGRESS",
+                completedTasksCount = 1,
+                totalTasksCount = 4,
+                readinessScore = 78,
+                lastUpdatedTimestamp = System.currentTimeMillis()
+            )
+            projectRepository.saveProject(initial)
+        }
+    }
+
+    /**
+     * Updates the project progress in the Room database directly from ChatScreen
+     */
+    fun updateProjectProgress(newProgress: Int, completedTasks: Int, readinessScore: Int) {
+        viewModelScope.launch {
+            val current = activeProjectEntity.value
+            val pId = current?.id ?: "proj_01"
+            projectRepository.updateProgress(
+                projectId = pId,
+                progress = newProgress,
+                completedTasks = completedTasks,
+                readinessScore = readinessScore
+            )
+        }
+    }
+
+    /**
+     * Completes current task progress milestone in Room DB from Chat commands
+     */
+    fun advanceProjectTaskProgress() {
+        viewModelScope.launch {
+            val current = activeProjectEntity.value ?: return@launch
+            projectRepository.incrementProgress(current.id, current)
+        }
+    }
+
+    /**
+     * Updates the active task title and number in Room DB
+     */
+    fun updateActiveProjectTask(taskNumber: Int, taskTitle: String, taskStatus: String) {
+        viewModelScope.launch {
+            val current = activeProjectEntity.value
+            val pId = current?.id ?: "proj_01"
+            projectRepository.updateActiveTask(
+                projectId = pId,
+                taskNumber = taskNumber,
+                taskTitle = taskTitle,
+                taskStatus = taskStatus
+            )
+        }
+    }
 
     private val _chatUiState = MutableStateFlow(
         ChatUiState(

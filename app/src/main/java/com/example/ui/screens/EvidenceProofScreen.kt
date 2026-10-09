@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,11 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +28,20 @@ import com.example.viewmodel.SisyaUiState
 fun EvidenceProofScreen(
     state: SisyaUiState,
     onTogglePreview: (Boolean) -> Unit,
+    onAddPhotoEvidence: (
+        title: String,
+        caption: String,
+        imageUri: String,
+        localFilePath: String?,
+        category: String,
+        tagsCsv: String
+    ) -> Unit = { _, _, _, _, _, _ -> },
+    onDeletePhotoEvidence: (String) -> Unit = {},
     onNavigate: (AppNavScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showCameraDialog by remember { mutableStateOf(false) }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -113,6 +122,34 @@ fun EvidenceProofScreen(
             }
         }
 
+        // Section 37/45: Evidence Summary KPI Component
+        item {
+            val totalEvidenceCount = state.evidenceList.size + state.photoEvidenceList.size
+            val vivaTurnsCompleted = if (state.isVivaCompleted) state.activeVivaTurns.size else state.activeVivaTurns.count { it.isAiEvaluated }
+            val completedDefenseTasks = state.project.milestones.flatMap { it.tasks }.count { it.defenseStatus == "Completed" }
+            val assessmentsCompletedCount = (vivaTurnsCompleted + completedDefenseTasks).coerceAtLeast(1)
+            val verifiedSkillsCount = state.evidenceList
+                .filter { it.state.level >= com.example.model.EvidenceState.DEMONSTRATED.level }
+                .map { it.skillName }
+                .distinct()
+                .size
+                .coerceAtLeast(1)
+
+            val summaryMetrics = EvidenceSummaryMetrics(
+                evidenceCollectedCount = totalEvidenceCount,
+                assessmentsCompletedCount = assessmentsCompletedCount,
+                skillsWithVerifiedEvidenceCount = verifiedSkillsCount,
+                totalSkillsCount = state.project.techStack.size.coerceAtLeast(6),
+                photoEvidenceCount = state.photoEvidenceList.size
+            )
+
+            EvidenceSummaryCard(
+                metrics = summaryMetrics,
+                onViewEvidenceLedger = null,
+                onStartAssessment = { onNavigate(AppNavScreen.MICRO_VIVA) }
+            )
+        }
+
         // Section 47: Public Proof Profile Preview Drawer/Card
         if (state.isPublicProofPreviewOpen) {
             item {
@@ -156,11 +193,86 @@ fun EvidenceProofScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "• 1 Active Microservices Project (${state.project.title})\n• 4 Attributable PRs merged with 100% CI pass rate\n• Zero self-declared vanity badges; 100% verified defense backing",
+                        text = "• 1 Active Microservices Project (${state.project.title})\n• 4 Attributable PRs merged with 100% CI pass rate\n• ${state.photoEvidenceList.size} Hardware / Prototype Photographic Evidence entries in Room DB\n• Zero self-declared vanity badges; 100% verified defense backing",
                         style = MaterialTheme.typography.bodySmall,
                         color = PrimaryText
                     )
                 }
+            }
+        }
+
+        // Photographic Prototype & Whiteboard Evidence Section (Room DB)
+        item {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Physical & Prototype Evidence",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = PrimaryText
+                        )
+                        Text(
+                            text = "Camera snapshots saved in Room DB with cryptographic project binding",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText
+                        )
+                    }
+
+                    Button(
+                        onClick = { showCameraDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryDarkTeal),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("btn_capture_photo_evidence")
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Capture Photo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        if (state.photoEvidenceList.isEmpty()) {
+            item {
+                SisyaCard(
+                    backgroundColor = SurfaceWhite,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddAPhoto,
+                            contentDescription = null,
+                            tint = MutedText,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "No Photo Evidence Entries Yet",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = PrimaryText
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Capture whiteboard architecture, circuit wiring, or physical prototype photos.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText
+                        )
+                    }
+                }
+            }
+        } else {
+            items(state.photoEvidenceList) { photoEntity ->
+                PhotoEvidenceCardView(
+                    evidence = photoEntity,
+                    onDelete = { onDeletePhotoEvidence(photoEntity.id) }
+                )
             }
         }
 
@@ -175,6 +287,21 @@ fun EvidenceProofScreen(
         items(state.evidenceList) { evidence ->
             EvidenceCardView(evidence = evidence)
         }
+    }
+
+    if (showCameraDialog) {
+        val activeProj = state.roomProject
+        CaptureEvidencePhotoDialog(
+            projectId = activeProj?.id ?: state.project.id,
+            projectTitle = activeProj?.title ?: state.project.title,
+            milestoneTitle = activeProj?.activeMilestoneTitle ?: state.project.milestones.firstOrNull()?.title,
+            taskNumber = activeProj?.activeTaskNumber ?: state.selectedTask.number,
+            onDismiss = { showCameraDialog = false },
+            onSaveEvidence = { title, caption, uri, filePath, category, tags ->
+                onAddPhotoEvidence(title, caption, uri, filePath, category, tags)
+                showCameraDialog = false
+            }
+        )
     }
 }
 

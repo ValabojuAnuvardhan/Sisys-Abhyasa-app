@@ -5,6 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.FirestoreRepository
 import com.example.data.MockDataSource
+import com.example.data.local.AppDatabase
+import com.example.data.local.PhotoEvidenceEntity
+import com.example.data.local.ProjectEntity
+import com.example.data.local.ProjectRepository
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +25,7 @@ enum class AppNavScreen(val title: String) {
     PROVE("Evidence & Proof"),
     MICRO_VIVA("Micro-Viva Defense"),
     CAREER("Career Readiness"),
+    PROJECT_DASHBOARD("Project Dashboard"),
     CHAT("ŚiṣyaChat")
 }
 
@@ -28,6 +33,9 @@ data class SisyaUiState(
     val currentScreen: AppNavScreen = AppNavScreen.DASHBOARD,
     val userProfile: UserProfile = MockDataSource.sampleUser,
     val project: ProjectModel = MockDataSource.sampleProject,
+    val roomProject: ProjectEntity? = null,
+    val allRoomProjects: List<ProjectEntity> = emptyList(),
+    val photoEvidenceList: List<PhotoEvidenceEntity> = emptyList(),
     val selectedTask: TaskModel = MockDataSource.sampleTasks[0],
     val evidenceList: List<SkillEvidenceItem> = MockDataSource.sampleEvidenceItems,
     val backendReadiness: JobReadinessMetric = MockDataSource.sampleBackendReadiness,
@@ -57,6 +65,8 @@ data class SisyaUiState(
 class SisyaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val firestoreRepository = FirestoreRepository(application.applicationContext)
+    private val database = AppDatabase.getDatabase(application.applicationContext)
+    val projectRepository = ProjectRepository(database.projectDao(), database.photoEvidenceDao())
 
     private val _uiState = MutableStateFlow(SisyaUiState())
     val uiState: StateFlow<SisyaUiState> = _uiState.asStateFlow()
@@ -73,6 +83,27 @@ class SisyaViewModel(application: Application) : AndroidViewModel(application) {
                         project = _uiState.value.project.copy(milestones = updatedMilestones)
                     )
                 }
+            }
+        }
+
+        // Observe Room Project Entity
+        viewModelScope.launch {
+            projectRepository.activeProject.collect { projEntity ->
+                _uiState.value = _uiState.value.copy(roomProject = projEntity)
+            }
+        }
+
+        // Observe All Room Projects for ProjectDashboard & Career Readiness
+        viewModelScope.launch {
+            projectRepository.observeAllProjects().collect { projects ->
+                _uiState.value = _uiState.value.copy(allRoomProjects = projects)
+            }
+        }
+
+        // Observe Room Photo Evidence Entries for Project
+        viewModelScope.launch {
+            projectRepository.observeAllEvidencePhotos().collect { photos ->
+                _uiState.value = _uiState.value.copy(photoEvidenceList = photos)
             }
         }
     }
@@ -283,5 +314,45 @@ class SisyaViewModel(application: Application) : AndroidViewModel(application) {
 
     fun togglePublicProofPreview(open: Boolean) {
         _uiState.value = _uiState.value.copy(isPublicProofPreviewOpen = open)
+    }
+
+    /**
+     * Saves a captured engineering photo evidence entry into the local Room database,
+     * associated with the specified project and task.
+     */
+    fun addPhotoEvidence(
+        projectId: String,
+        title: String,
+        caption: String,
+        imageUri: String,
+        localFilePath: String? = null,
+        category: String = "PROTOTYPE",
+        tagsCsv: String = "prototype,engineering",
+        milestoneTitle: String? = null,
+        taskNumber: Int? = null
+    ) {
+        viewModelScope.launch {
+            val newEntry = PhotoEvidenceEntity(
+                id = "ev_photo_${System.currentTimeMillis()}",
+                projectId = projectId,
+                title = title.ifBlank { "Engineering Prototype Evidence" },
+                caption = caption.ifBlank { "Photo captured via device camera as immutable proof of engineering work." },
+                imageUri = imageUri,
+                localFilePath = localFilePath,
+                category = category,
+                tagsCsv = tagsCsv,
+                milestoneTitle = milestoneTitle ?: _uiState.value.project.milestones.firstOrNull()?.title,
+                taskNumber = taskNumber ?: _uiState.value.selectedTask.number,
+                verifiedFlag = true,
+                createdAt = System.currentTimeMillis()
+            )
+            projectRepository.savePhotoEvidence(newEntry)
+        }
+    }
+
+    fun deletePhotoEvidence(evidenceId: String) {
+        viewModelScope.launch {
+            projectRepository.deletePhotoEvidence(evidenceId)
+        }
     }
 }

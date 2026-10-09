@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,17 +40,45 @@ fun CareerReadinessScreen(
     ) {
         item {
             Column {
-                Text(
-                    text = "Career Readiness & Skill Gaps",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = PrimaryText
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Role-specific, evidence-backed evaluation with explainable next actions.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SecondaryText
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Career Readiness & Skill Gaps",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = PrimaryText
+                        )
+                        Text(
+                            text = "Role-specific, evidence-backed evaluation with explainable next actions.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SecondaryText
+                        )
+                    }
+
+                    Surface(
+                        color = PrimaryDarkTeal,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .clickable { onNavigate(AppNavScreen.PROJECT_DASHBOARD) }
+                            .testTag("btn_career_to_project_dashboard")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Insights, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Visual Dashboard",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
             }
         }
 

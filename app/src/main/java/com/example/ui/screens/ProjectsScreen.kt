@@ -66,6 +66,27 @@ fun ProjectsScreen(
                             color = SecondaryText
                         )
                     }
+
+                    Surface(
+                        color = PrimaryDarkTeal,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .clickable { onNavigate(AppNavScreen.PROJECT_DASHBOARD) }
+                            .testTag("btn_nav_project_dashboard")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Insights, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Analytics",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(14.dp))
 

@@ -105,13 +105,14 @@ class FirestoreRepository(private val context: Context) {
         val database = db
         if (database == null) {
             trySend(MockDataSource.sampleTasks)
-            awaitClose { }
+            close()
             return@callbackFlow
         }
 
-        val uid = requireUserId()
+        var listener: com.google.firebase.firestore.ListenerRegistration? = null
         try {
-            val listener = database.collection("users").document(uid).collection("tasks")
+            val uid = requireUserId()
+            listener = database.collection("users").document(uid).collection("tasks")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         trySend(MockDataSource.sampleTasks)
@@ -152,10 +153,13 @@ class FirestoreRepository(private val context: Context) {
                         trySend(tasks)
                     }
                 }
-            awaitClose { listener.remove() }
         } catch (e: Throwable) {
+            Log.w("FirestoreRepository", "Failed to register snapshot listener: ${e.message}")
             trySend(MockDataSource.sampleTasks)
-            awaitClose { }
+        }
+
+        awaitClose {
+            listener?.remove()
         }
     }
 

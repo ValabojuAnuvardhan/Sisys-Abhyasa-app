@@ -147,6 +147,39 @@ fun DashboardScreen(
             }
         }
 
+        // Section 37/45: EvidenceSummary Dashboard Component
+        item {
+            // Compute real metric counts from state
+            // 1. Evidence collected: skill evidence items + Room photo evidence captures + merged PR tasks
+            val totalEvidenceCount = state.evidenceList.size + state.photoEvidenceList.size
+            // 2. Assessments completed: Micro-Viva turns evaluated + tasks with completed defenses
+            val vivaTurnsCompleted = if (state.isVivaCompleted) state.activeVivaTurns.size else state.activeVivaTurns.count { it.isAiEvaluated }
+            val completedDefenseTasks = state.project.milestones.flatMap { it.tasks }.count { it.defenseStatus == "Completed" }
+            val assessmentsCompletedCount = (vivaTurnsCompleted + completedDefenseTasks).coerceAtLeast(1)
+            // 3. Skills with verified evidence: Unique skills where evidence state is DEMONSTRATED or REPEATEDLY_DEMONSTRATED
+            val verifiedSkillsCount = state.evidenceList
+                .filter { it.state.level >= EvidenceState.DEMONSTRATED.level }
+                .map { it.skillName }
+                .distinct()
+                .size
+                .coerceAtLeast(1)
+
+            val summaryMetrics = EvidenceSummaryMetrics(
+                evidenceCollectedCount = totalEvidenceCount,
+                assessmentsCompletedCount = assessmentsCompletedCount,
+                skillsWithVerifiedEvidenceCount = verifiedSkillsCount,
+                totalSkillsCount = state.project.techStack.size.coerceAtLeast(6),
+                photoEvidenceCount = state.photoEvidenceList.size
+            )
+
+            val activeTask = state.selectedTask
+            EvidenceSummaryCard(
+                metrics = summaryMetrics,
+                onViewEvidenceLedger = { onNavigate(AppNavScreen.PROVE) },
+                onStartAssessment = { onStartDefense(activeTask) }
+            )
+        }
+
         // Job Readiness Card with Explainable Reasoning (Section 48 & 49)
         item {
             val readiness = state.backendReadiness
@@ -227,13 +260,26 @@ fun DashboardScreen(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                SisyaButton(
-                    text = "View Career Explorer & Proof Bundle",
-                    onClick = { onNavigate(AppNavScreen.CAREER) },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    isPrimary = false,
-                    testTag = "btn_career_explorer"
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SisyaButton(
+                        text = "Career Explorer",
+                        onClick = { onNavigate(AppNavScreen.CAREER) },
+                        modifier = Modifier.weight(1f),
+                        isPrimary = false,
+                        testTag = "btn_career_explorer"
+                    )
+                    SisyaButton(
+                        text = "Visual Dashboard",
+                        onClick = { onNavigate(AppNavScreen.PROJECT_DASHBOARD) },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Insights,
+                        isPrimary = true,
+                        testTag = "btn_dashboard_project_charts"
+                    )
+                }
             }
         }
 

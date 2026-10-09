@@ -103,6 +103,21 @@ class MainActivity : ComponentActivity() {
                                     onToggleChecklist = { viewModel.toggleLearningChecklist(it) },
                                     onAdvanceStatus = { task, status -> viewModel.advanceTaskStatus(task, status) },
                                     onStartDefense = { viewModel.startVivaDefense(it) },
+                                    onAddPhotoEvidence = { title, caption, uri, filePath, category, tags ->
+                                        val projId = uiState.roomProject?.id ?: uiState.project.id
+                                        viewModel.addPhotoEvidence(
+                                            projectId = projId,
+                                            title = title,
+                                            caption = caption,
+                                            imageUri = uri,
+                                            localFilePath = filePath,
+                                            category = category,
+                                            tagsCsv = tags,
+                                            milestoneTitle = uiState.roomProject?.activeMilestoneTitle ?: uiState.project.milestones.firstOrNull()?.title,
+                                            taskNumber = uiState.selectedTask.number
+                                        )
+                                    },
+                                    onDeletePhotoEvidence = { viewModel.deletePhotoEvidence(it) },
                                     onNavigate = { viewModel.navigateTo(it) }
                                 )
                             }
@@ -125,6 +140,21 @@ class MainActivity : ComponentActivity() {
                                 EvidenceProofScreen(
                                     state = uiState,
                                     onTogglePreview = { viewModel.togglePublicProofPreview(it) },
+                                    onAddPhotoEvidence = { title, caption, uri, filePath, category, tags ->
+                                        val projId = uiState.roomProject?.id ?: uiState.project.id
+                                        viewModel.addPhotoEvidence(
+                                            projectId = projId,
+                                            title = title,
+                                            caption = caption,
+                                            imageUri = uri,
+                                            localFilePath = filePath,
+                                            category = category,
+                                            tagsCsv = tags,
+                                            milestoneTitle = uiState.roomProject?.activeMilestoneTitle ?: uiState.project.milestones.firstOrNull()?.title,
+                                            taskNumber = uiState.selectedTask.number
+                                        )
+                                    },
+                                    onDeletePhotoEvidence = { viewModel.deletePhotoEvidence(it) },
                                     onNavigate = { viewModel.navigateTo(it) }
                                 )
                             }
@@ -134,10 +164,18 @@ class MainActivity : ComponentActivity() {
                                     onNavigate = { viewModel.navigateTo(it) }
                                 )
                             }
-                            AppNavScreen.CHAT -> {
-                                SisyaChatScreen(
+                            AppNavScreen.PROJECT_DASHBOARD -> {
+                                ProjectDashboardScreen(
                                     state = uiState,
-                                    chatViewModel = chatViewModel
+                                    onNavigate = { viewModel.navigateTo(it) },
+                                    onSelectProjectTask = { viewModel.selectTask(it) }
+                                )
+                            }
+                            AppNavScreen.CHAT -> {
+                                ChatScreen(
+                                    state = uiState,
+                                    chatViewModel = chatViewModel,
+                                    onNavigate = { viewModel.navigateTo(it) }
                                 )
                             }
                         }
